@@ -1,16 +1,16 @@
 extensions [gis]
 
-breed [nodes vertex]
-breed [planes commuter]
+breed [nodes n]
+breed [planes plane]
 globals [
-  roads
+  lines
   des
   strategys
 ]
 
 planes-own [
-  path
-  path-cost
+  travel
+  travel-cost
   strategy
 ]
 
@@ -24,8 +24,17 @@ nodes-own [
 to setup
   ca
   reset-ticks
-  set roads gis:load-dataset "RoadMap/vn/VNM_roads.shp"
-  foreach gis:feature-list-of roads [
+   if choose-map = "VN"
+  [set lines gis:load-dataset "Map/vn/VNM_roads.shp"]
+   if choose-map = "HaNoi"
+  [set lines gis:load-dataset "Map/Hanoi/road_line.shp"]
+  if choose-map = "DaNang"
+  [set lines gis:load-dataset "Map/danang/map-5/roads-line.shp"]
+  if choose-map = "England"
+  [set lines gis:load-dataset "Map/england/england/roads-line.shp"]
+  if choose-map = "Korean"
+  [set lines gis:load-dataset "Map/korean/korean/roads-line.shp"]
+  foreach gis:feature-list-of lines [
     road-feature ->
     foreach gis:vertex-lists-of road-feature [
       v ->
@@ -78,9 +87,9 @@ to clear-color
   ask links [set thickness 0.1 set color blue]
 end
 
-to clear-path
+to clear-travel
   ask planes[
-    set path []
+    set travel []
   ]
    clear-color
 end
@@ -95,7 +104,7 @@ to generate-planes
     set color red
   ]]
   ask planes[die]
-  clear-path
+  clear-travel
   create-planes number-of-planes [
     set strategy one-of strategys
     if strategy = "A*" [set color yellow]
@@ -103,8 +112,8 @@ to generate-planes
     if strategy = "BFS" [set color pink]
     if strategy = "DFS" [set color cyan]
     set size 0.6
-    set shape "airplane"
-    set path []
+    set shape "car"
+    set travel []
     let mynode one-of nodes
     ask mynode[
       set check? true
@@ -132,7 +141,7 @@ end
 to a* [#plane]
   if des != nobody[
   ask #plane [
-      set path []
+      set travel []
       let queue []
     let p self
     let des-of-p [des] of p
@@ -152,12 +161,12 @@ to a* [#plane]
         ask cur-node [set check? true]
         set queue but-first queue
         if cur-node = des [
-          set path-cost 0
+          set travel-cost 0
           while [cur-node != root] [
-            set path-cost path-cost + [cost] of cur-node
-            set path fput cur-node path
+            set travel-cost travel-cost + [cost] of cur-node
+            set travel fput cur-node travel
             set cur-node [father-pointer] of cur-node
-            ask link [who] of cur-node [who] of first path  [
+            ask link [who] of cur-node [who] of first travel  [
             if color != cyan and color != pink and color != green
                 [set color yellow set thickness 0.3]
               if color = cyan or color = pink or color = green
@@ -165,7 +174,7 @@ to a* [#plane]
             ]
             display
           ]
-          set path fput root path
+          set travel fput root travel
           stop
         ]
         ask [link-neighbors] of cur-node[
@@ -204,7 +213,7 @@ to ucs [#plane]
         set cost 0
       ]
       set queue lput root queue
-      set path []
+      set travel []
       let p self
       while [not empty? queue] [
         set queue sort-by [[v1 v2] -> [cost] of v2 > [cost] of v1]  queue
@@ -212,12 +221,12 @@ to ucs [#plane]
         ask cur-node [set check? true]
         set queue but-first queue
         if cur-node = des [
-          set path-cost 0
+          set travel-cost 0
           while [cur-node != root] [
-            set path-cost path-cost + [cost] of cur-node
-            set path fput cur-node path
+            set travel-cost travel-cost + [cost] of cur-node
+            set travel fput cur-node travel
             set cur-node [father-pointer] of cur-node
-            ask link [who] of cur-node [who] of first path  [
+            ask link [who] of cur-node [who] of first travel  [
              if color != yellow and color != pink and color != cyan
                [set color green set thickness 0.3]
               if color = yellow or color = pink or color = cyan
@@ -225,7 +234,7 @@ to ucs [#plane]
             ]
             display
           ]
-          set path fput root path
+          set travel fput root travel
           stop
         ]
         ask [link-neighbors] of cur-node[
@@ -256,7 +265,7 @@ end
 to bfs [#plane]
   if des != nobody [
     ask #plane [
-     set path []
+     set travel []
       ask nodes [
         set check? false
       ]
@@ -283,15 +292,15 @@ to bfs [#plane]
           ]
           if self = des-of-p [
             ask p[
-              set path-cost 0
+              set travel-cost 0
             ]
             set cur-node self
             while [cur-node != root] [
               ask p[
-                set path-cost path-cost + [cost] of cur-node
-                set path fput cur-node path
+                set travel-cost travel-cost + [cost] of cur-node
+                set travel fput cur-node travel
                 set cur-node [father-pointer] of cur-node
-                ask link [who] of cur-node [who] of first path  [
+                ask link [who] of cur-node [who] of first travel  [
                  if color != yellow and color != cyan and color != green
                   [set color pink set thickness 0.3]
                   if color = yellow or color = cyan or color = green
@@ -301,7 +310,7 @@ to bfs [#plane]
               ]
             ]
             ask p[
-              set path fput root path
+              set travel fput root travel
             ]
             set goal? true
             stop
@@ -315,7 +324,7 @@ end
 to dfs [#plane]
    if des != nobody [
     ask #plane [
-      set path []
+      set travel []
       ask nodes [
         set check? false
       ]
@@ -342,15 +351,15 @@ to dfs [#plane]
           ]
           if self = des-of-p [
             ask p[
-              set path-cost 0
+              set travel-cost 0
             ]
             set cur-node self
             while [cur-node != root] [
               ask p[
-                set path-cost path-cost + [cost] of cur-node
-                set path fput cur-node path
+                set travel-cost travel-cost + [cost] of cur-node
+                set travel fput cur-node travel
                 set cur-node [father-pointer] of cur-node
-                ask link [who] of cur-node [who] of first path  [
+                ask link [who] of cur-node [who] of first travel  [
                  if color != yellow and color != pink and color != green
                   [set color cyan set thickness 0.3]
                   if color = yellow or color = pink or color = green
@@ -360,7 +369,7 @@ to dfs [#plane]
               ]
             ]
             ask p[
-              set path fput root path
+              set travel fput root travel
             ]
             set goal? true
             stop
@@ -400,9 +409,9 @@ ticks
 
 BUTTON
 50
-25
+89
 131
-58
+122
 NIL
 setup
 NIL
@@ -417,9 +426,9 @@ NIL
 
 BUTTON
 22
-110
+174
 169
-143
+207
 NIL
 generate-planes
 NIL
@@ -434,11 +443,11 @@ NIL
 
 BUTTON
 47
-202
+266
 135
-235
-NIL
-clear-path
+299
+clean
+clear-travel
 NIL
 1
 T
@@ -451,9 +460,9 @@ NIL
 
 BUTTON
 58
-158
+222
 121
-191
+255
 NIL
 go
 NIL
@@ -468,9 +477,9 @@ NIL
 
 SLIDER
 16
-68
+132
 188
-101
+165
 number-of-planes
 number-of-planes
 1
@@ -480,6 +489,16 @@ number-of-planes
 1
 NIL
 HORIZONTAL
+
+CHOOSER
+29
+19
+167
+64
+choose-map
+choose-map
+"VN" "DaNang" "England" "Korean" "HaNoi"
+3
 
 @#$#@#$#@
 ## WHAT IS IT?
