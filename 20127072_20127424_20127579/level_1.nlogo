@@ -1,23 +1,22 @@
 extensions [gis]
 
-breed [vertices vertex]
-breed [commuters commuter]
+breed [nodes vertex]
+breed [planes commuter]
 globals [
   roads
-  destination
+  des
 ]
 
-commuters-own [
+planes-own [
   path
   path-cost
 ]
 
-vertices-own [
-  centre?
-  visited?
-  hvalue
+nodes-own [
+  check?
+  heuristic-value
   cost
-  pre-vertice-pointer
+  father-pointer
 ]
 
 to setup
@@ -28,13 +27,12 @@ to setup
     road-feature ->
     foreach gis:vertex-lists-of road-feature [
       v ->
-
       let pre-node-pointer nobody
       foreach v [
         node ->
         let location gis:location-of node
         if not empty? location [
-          create-vertices 1 [
+          create-nodes 1 [
             set shape "star"
             set size 0.5
             set color red
@@ -48,9 +46,9 @@ to setup
       ]
     ]
   ]
-  ask vertices [
-    if count vertices-here > 1[
-      ask other vertices-here [
+  ask nodes [
+    if count nodes-here > 1[
+      ask other nodes-here [
         ask myself [
           create-links-with other [link-neighbors] of myself
         ]
@@ -58,54 +56,55 @@ to setup
       ]
     ]
   ]
-  ask vertices [set visited? false]
-  ask one-of vertices [set visited? true]
+  ask nodes [set check? false]
+  ask one-of nodes [set check? true]
   repeat 500 [
-    ask vertices with [ visited? = true] [
+    ask nodes with [ check? = true] [
       ask link-neighbors [
-        set visited? true
+        set check? true
       ]
     ]
   ]
-  ask vertices with [ visited? = false][die]
-  reset-entire-path
-  set destination nobody
+  ask nodes with [ check? = false][die]
+  clear-color
+  set des nobody
+  ask nodes[set check? false]
 end
 
-to reset-entire-path
+to clear-color
   ask links [set thickness 0.1 set color blue]
 end
 
 to clear-path
-  ask commuters[
+  ask planes[
     set path []
   ]
-   reset-entire-path
+   clear-color
 end
 
-to generate-commuters
-  if destination != nobody[
-  ask destination
+to generate-planes
+  if des != nobody[
+  ask des
   [
     set shape "star"
     set size 0.5
     set color red
   ]]
-  ask commuters[die]
+  ask planes[die]
   clear-path
-  create-commuters 1 [
+  create-planes 1 [
     set color white
     set size 0.6
     set shape "airplane"
     set path []
-    let mynode one-of vertices
+    let mynode one-of nodes
     ask mynode[
-      set centre? true
+      set check? true
     ]
     move-to mynode
   ]
-  set destination one-of vertices with [centre? != true]
-  ask destination
+  set des one-of nodes with [check? != true]
+  ask des
   [
     set color yellow
     set size 0.7
@@ -114,6 +113,7 @@ to generate-commuters
 end
 
 to go
+  clear-path
   if algorithm = "A*" [a*]
   if algorithm = "UCS" [ucs]
   if algorithm = "BFS" [bfs]
@@ -125,117 +125,115 @@ to go
 end
 
 to a*
-  ask commuters [
-    let cmter self
-    let des-of-cmter [destination] of cmter
-    if destination != nobody [
+  if des != nobody[
+  ask planes [
       set path []
-      let frontier []
-      ask vertices [
-        set visited? false
-        set hvalue [distance des-of-cmter] of self
-      ]
-      let root one-of vertices-here
+      let queue []
+    let p self
+    let des-of-p [des] of p
+      let root one-of nodes-here
       ask root [
-        set pre-vertice-pointer nobody
+        set father-pointer nobody
         set cost 0
       ]
-      set frontier lput root frontier
-
-      while [not empty? frontier] [
-        set frontier sort-by [[v1 v2] -> ([hvalue] of v1 + [cost] of v1) < ([hvalue] of v2 + [cost] of v2)]  frontier
-        let current-vertice first frontier
-        ask current-vertice [set visited? true]
-        set frontier but-first frontier
-
-        if current-vertice = destination [
+      set queue lput root queue
+      ask nodes [
+        set heuristic-value [distance des-of-p] of self
+        set check? false
+      ]
+      while [not empty? queue] [
+        set queue sort-by [[v1 v2] -> ([heuristic-value] of v2 + [cost] of v2) > ([heuristic-value] of v1 + [cost] of v1)]  queue
+        let cur-node first queue
+        ask cur-node [set check? true]
+        set queue but-first queue
+        if cur-node = des [
           set path-cost 0
-          while [current-vertice != root] [
-            set path-cost path-cost + [cost] of current-vertice
-            set path fput current-vertice path
-            set current-vertice [pre-vertice-pointer] of current-vertice
-            ask link [who] of current-vertice [who] of first path  [set color yellow set thickness 0.3]
+          while [cur-node != root] [
+            set path-cost path-cost + [cost] of cur-node
+            set path fput cur-node path
+            set cur-node [father-pointer] of cur-node
+            ask link [who] of cur-node [who] of first path  [set color yellow set thickness 0.3]
             wait delay
             display
           ]
           set path fput root path
           stop
         ]
-        ask [link-neighbors] of current-vertice[
-          if not visited? [
-            set pre-vertice-pointer current-vertice
-            set cost ([cost] of current-vertice + distance current-vertice)
-            let change-frontier? false
-            foreach frontier [
+        ask [link-neighbors] of cur-node[
+          if not check? [
+            let change-queue? false
+            set cost ([cost] of cur-node + distance cur-node)
+            set father-pointer cur-node
+            foreach queue [
               v ->
               if v = self [
-                set change-frontier? true
-                if ([cost] of self + hvalue) < ([cost] of v + [hvalue] of v) [
+                set change-queue? true
+                if ([cost] of v + [heuristic-value] of v) > ([cost] of self + heuristic-value) [
                   ask v [set cost [cost] of myself]
                 ]
               ]
             ]
-            if change-frontier? = false [
-              set frontier lput self frontier
-               ask link [who] of current-vertice [who] of self  [set color yellow - 3 set thickness 0.3]
+            if change-queue? = false [
+              set queue lput self queue
+               ask link [who] of cur-node [who] of self  [set color yellow - 3 set thickness 0.3]
               wait delay
               display
-            ]
-          ]
-        ]
-      ]
-    ]
+           ]
+         ]
+       ]
+     ]
   ]
+]
 end
 
 to ucs
-  ask commuters [
-    let cmter self
-    if destination != nobody [
-      set path []
-      let frontier []
-      ask vertices [ set visited? false ]
-      let root one-of vertices-here
+ if des != nobody [
+    ask planes [
+      let queue []
+      ask nodes [ set check? false ]
+      let root one-of nodes-here
       ask root [
-        set pre-vertice-pointer nobody
+        set father-pointer nobody
         set cost 0
       ]
-      set frontier lput root frontier
-      while [not empty? frontier] [
-        set frontier sort-by [[v1 v2] -> [cost] of v1 < [cost] of v2]  frontier
-        let current-vertice first frontier
-        ask current-vertice [set visited? true]
-        set frontier but-first frontier
-        if current-vertice = destination [
+      set queue lput root queue
+      set path []
+      let p self
+      while [not empty? queue] [
+        set queue sort-by [[v1 v2] -> [cost] of v2 > [cost] of v1]  queue
+        let cur-node first queue
+        ask cur-node [set check? true]
+        set queue but-first queue
+        if cur-node = des [
           set path-cost 0
-          while [current-vertice != root] [
-            set path-cost path-cost + [cost] of current-vertice
-            set path fput current-vertice path
-            set current-vertice [pre-vertice-pointer] of current-vertice
-            ask link [who] of current-vertice [who] of first path  [set color green set thickness 0.3]
+          while [cur-node != root] [
+            set path-cost path-cost + [cost] of cur-node
+            set path fput cur-node path
+            set cur-node [father-pointer] of cur-node
+            ask link [who] of cur-node [who] of first path  [set color green set thickness 0.3]
             wait delay
             display
           ]
           set path fput root path
           stop
         ]
-        ask [link-neighbors] of current-vertice[
-          if not visited? [
-            set pre-vertice-pointer current-vertice
-            set cost ([cost] of current-vertice + distance current-vertice)
-            let change-frontier? false
-            foreach frontier [
+        ask [link-neighbors] of cur-node[
+          if not check? [
+            let change-queue? false
+            set cost ([cost] of cur-node + distance cur-node)
+            set father-pointer cur-node
+            foreach queue [
               v ->
               if v = self [
-                set change-frontier? true
-                if [cost] of self < [cost] of v [
+                if [cost] of v > [cost] of self [
                   ask v [set cost [cost] of myself]
                 ]
+                set change-queue? true
               ]
             ]
-            if change-frontier? = false [
-              set frontier lput self frontier
-              ask link [who] of current-vertice [who] of self  [set color green - 3 set thickness 0.3]
+            if change-queue? = false [
+              set queue lput self queue
+              ask link [who] of cur-node [who] of self  [set color green - 3 set thickness 0.3]
               wait delay
               display
             ]
@@ -247,54 +245,54 @@ to ucs
 end
 
 to bfs
-  ask commuters [
-    if destination != nobody [
-      let cmter self
-      let des-of-cmter [destination] of cmter
-      set path []
-      let frontier []
-      ask vertices [
-        set visited? false
+  if des != nobody [
+    ask planes [
+     set path []
+      ask nodes [
+        set check? false
       ]
-      let root one-of vertices-here
+      let root one-of nodes-here
       ask root [
-        set pre-vertice-pointer nobody
+        set father-pointer nobody
         set cost 0
       ]
-      set frontier lput root frontier
-      let foundGoal? false
-      while [not empty? frontier and foundGoal? = false] [
-        let current-vertice first frontier
-        ask current-vertice [set visited? true]
-        set frontier but-first frontier
-        ask [link-neighbors] of current-vertice[
-          if not visited? and not member? self frontier and foundGoal? = false[
-            set cost ([cost] of current-vertice + distance current-vertice)
-            set pre-vertice-pointer current-vertice
-            set frontier lput self frontier
-            ask link [who] of current-vertice [who] of self  [set color pink - 3 set thickness 0.3]
+      let queue []
+      let p self
+      let goal? false
+      let des-of-p [des] of p
+      set queue lput root queue
+      while [not empty? queue and goal? != true] [
+         let cur-node first queue
+        ask cur-node [set check? true]
+        set queue but-first queue
+        ask [link-neighbors] of cur-node[
+          if not check? and not member? self queue and goal? != true[
+            set father-pointer cur-node
+            set queue lput self queue
+            set cost ([cost] of cur-node + distance cur-node)
+            ask link [who] of cur-node [who] of self  [set color pink - 3 set thickness 0.3]
             wait delay
             display
           ]
-          if self = des-of-cmter [
-            set current-vertice self
-            ask cmter[
+          if self = des-of-p [
+            ask p[
               set path-cost 0
             ]
-            while [current-vertice != root] [
-              ask cmter[
-                set path-cost path-cost + [cost] of current-vertice
-                set path fput current-vertice path
-                set current-vertice [pre-vertice-pointer] of current-vertice
-                ask link [who] of current-vertice [who] of first path  [set color pink set thickness 0.3]
+            set cur-node self
+            while [cur-node != root] [
+              ask p[
+                set path-cost path-cost + [cost] of cur-node
+                set path fput cur-node path
+                set cur-node [father-pointer] of cur-node
+                ask link [who] of cur-node [who] of first path  [set color pink set thickness 0.3]
                 wait delay
                 display
               ]
             ]
-            ask cmter[
+            ask p[
               set path fput root path
             ]
-            set foundGoal? true
+            set goal? true
             stop
           ]
         ]
@@ -304,54 +302,54 @@ to bfs
 end
 
 to dfs
-  ask commuters [
-    if destination != nobody [
-      let cmter self
-      let des-of-cmter [destination] of cmter
+   if des != nobody [
+    ask planes [
       set path []
-      let frontier []
-      ask vertices [
-        set visited? false
+      ask nodes [
+        set check? false
       ]
-      let root one-of vertices-here
+      let root one-of nodes-here
       ask root [
-        set pre-vertice-pointer nobody
+        set father-pointer nobody
         set cost 0
       ]
-      set frontier lput root frontier
-      let foundGoal? false
-      while [not empty? frontier and foundGoal? = false] [
-        let current-vertice first frontier
-        ask current-vertice [set visited? true]
-        set frontier but-first frontier
-        ask [link-neighbors] of current-vertice[
-          if not visited? and foundGoal? = false [
-            set cost ([cost] of current-vertice + distance current-vertice)
-            set pre-vertice-pointer current-vertice
-            set frontier fput self frontier
-            ask link [who] of current-vertice [who] of self  [set color cyan - 3 set thickness 0.3]
+      let queue []
+      let p self
+      let goal? false
+      let des-of-p [des] of p
+      set queue lput root queue
+      while [not empty? queue and goal? != true] [
+        let cur-node first queue
+        ask cur-node [set check? true]
+        set queue but-first queue
+        ask [link-neighbors] of cur-node[
+          if not check? and goal? != true [
+            set father-pointer cur-node
+            set queue fput self queue
+            set cost ([cost] of cur-node + distance cur-node)
+            ask link [who] of cur-node [who] of self  [set color cyan - 3 set thickness 0.3]
             wait delay
             display
           ]
-          if self = des-of-cmter [
-            set current-vertice self
-            ask cmter[
+          if self = des-of-p [
+            ask p[
               set path-cost 0
             ]
-            while [current-vertice != root] [
-              ask cmter[
-                set path-cost path-cost + [cost] of current-vertice
-                set path fput current-vertice path
-                set current-vertice [pre-vertice-pointer] of current-vertice
-                ask link [who] of current-vertice [who] of first path  [set color cyan set thickness 0.3]
+            set cur-node self
+            while [cur-node != root] [
+              ask p[
+                set path-cost path-cost + [cost] of cur-node
+                set path fput cur-node path
+                set cur-node [father-pointer] of cur-node
+                ask link [who] of cur-node [who] of first path  [set color cyan set thickness 0.3]
                 wait delay
                 display
               ]
             ]
-            ask cmter[
+            ask p[
               set path fput root path
             ]
-            set foundGoal? true
+            set goal? true
             stop
           ]
         ]
@@ -410,7 +408,7 @@ BUTTON
 167
 105
 NIL
-generate-commuters
+generate-planes
 NIL
 1
 T
@@ -461,7 +459,7 @@ CHOOSER
 algorithm
 algorithm
 "A*" "UCS" "BFS" "DFS"
-0
+3
 
 BUTTON
 61
