@@ -118,6 +118,10 @@ to go
   if algorithm = "UCS" [ucs]
   if algorithm = "BFS" [bfs]
   if algorithm = "DFS" [dfs]
+   ask links [
+    if color = yellow - 3 or color = green - 3 or color = pink - 3 or color = cyan - 3
+    [set thickness 0.1 set color blue]
+  ]
 end
 
 to a*
@@ -173,6 +177,7 @@ to a*
             ]
             if change-frontier? = false [
               set frontier lput self frontier
+               ask link [who] of current-vertice [who] of self  [set color yellow - 3 set thickness 0.3]
               wait delay
               display
             ]
@@ -230,6 +235,7 @@ to ucs
             ]
             if change-frontier? = false [
               set frontier lput self frontier
+              ask link [who] of current-vertice [who] of self  [set color green - 3 set thickness 0.3]
               wait delay
               display
             ]
@@ -266,6 +272,7 @@ to bfs
             set cost ([cost] of current-vertice + distance current-vertice)
             set pre-vertice-pointer current-vertice
             set frontier lput self frontier
+            ask link [who] of current-vertice [who] of self  [set color pink - 3 set thickness 0.3]
             wait delay
             display
           ]
@@ -322,6 +329,7 @@ to dfs
             set cost ([cost] of current-vertice + distance current-vertice)
             set pre-vertice-pointer current-vertice
             set frontier fput self frontier
+            ask link [who] of current-vertice [who] of self  [set color cyan - 3 set thickness 0.3]
             wait delay
             display
           ]
@@ -421,9 +429,9 @@ SLIDER
 delay
 delay
 0
-10
-0.0
-0.5
+5
+0.1
+0.1
 1
 NIL
 HORIZONTAL
@@ -453,7 +461,7 @@ CHOOSER
 algorithm
 algorithm
 "A*" "UCS" "BFS" "DFS"
-1
+0
 
 BUTTON
 61

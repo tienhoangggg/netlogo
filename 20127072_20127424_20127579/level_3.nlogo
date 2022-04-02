@@ -165,7 +165,6 @@ to a* [#commuter]
                   if color = blue
                   [set color yellow set thickness 0.3]
             ]
-            wait delay
             display
           ]
           set path fput root path
@@ -187,7 +186,6 @@ to a* [#commuter]
             ]
             if change-frontier? = false [
               set frontier lput self frontier
-              wait delay
               display
             ]
           ]
@@ -227,7 +225,6 @@ to ucs [#commuter]
                   if color = blue
                   [set color green set thickness 0.3]
             ]
-            wait delay
             display
           ]
           set path fput root path
@@ -249,7 +246,6 @@ to ucs [#commuter]
             ]
             if change-frontier? = false [
               set frontier lput self frontier
-              wait delay
               display
             ]
           ]
@@ -285,7 +281,6 @@ to bfs [#commuter]
             set cost ([cost] of current-vertice + distance current-vertice)
             set pre-vertice-pointer current-vertice
             set frontier lput self frontier
-            wait delay
             display
           ]
           if self = des-of-cmter [
@@ -304,7 +299,6 @@ to bfs [#commuter]
                   if color = blue
                   [set color pink set thickness 0.3]
                 ]
-                wait delay
                 display
               ]
             ]
@@ -346,7 +340,6 @@ to dfs [#commuter]
             set cost ([cost] of current-vertice + distance current-vertice)
             set pre-vertice-pointer current-vertice
             set frontier fput self frontier
-            wait delay
             display
           ]
           if self = des-of-cmter [
@@ -365,7 +358,6 @@ to dfs [#commuter]
                   if color = blue
                   [set color cyan set thickness 0.3]
                 ]
-                wait delay
                 display
               ]
             ]
@@ -441,21 +433,6 @@ NIL
 NIL
 NIL
 1
-
-SLIDER
-15
-157
-187
-190
-delay
-delay
-0
-10
-0.5
-0.5
-1
-NIL
-HORIZONTAL
 
 BUTTON
 60

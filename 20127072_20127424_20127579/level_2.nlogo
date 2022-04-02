@@ -120,6 +120,10 @@ to go
   if algorithm-1 = "UCS" [ucs]
   if algorithm-1 = "BFS" [bfs]
   if algorithm-1 = "DFS" [dfs]
+  ask links [
+    if color = yellow - 3 or color = green - 3 or color = pink - 3 or color = cyan - 3
+    [set thickness 0.1 set color blue]
+  ]
   set temp destination
   set destination one-of vertices with [centre? = true]
   ask destination
@@ -145,6 +149,10 @@ to go
   if algorithm-2 = "UCS" [ucs]
   if algorithm-2 = "BFS" [bfs]
   if algorithm-2 = "DFS" [dfs]
+  ]
+  ask links [
+    if color = yellow - 3 or color = green - 3 or color = pink - 3 or color = cyan - 3
+    [set thickness 0.1 set color blue]
   ]
 end
 
@@ -179,10 +187,10 @@ to a*
             set path fput current-vertice path
             set current-vertice [pre-vertice-pointer] of current-vertice
             ask link [who] of current-vertice [who] of first path  [
-            if color != blue
-                  [set color brown set thickness 0.3]
-                  if color = blue
-                  [set color yellow set thickness 0.3]
+             if color != cyan and color != pink and color != green
+                [set color yellow set thickness 0.3]
+              if color = cyan or color = pink or color = green
+                [set color brown set thickness 0.3]
             ]
             wait delay
             display
@@ -206,6 +214,9 @@ to a*
             ]
             if change-frontier? = false [
               set frontier lput self frontier
+               ask link [who] of current-vertice [who] of self  [
+                if color = blue
+                [set color yellow - 3 set thickness 0.3]]
               wait delay
               display
             ]
@@ -241,10 +252,10 @@ to ucs
             set path fput current-vertice path
             set current-vertice [pre-vertice-pointer] of current-vertice
             ask link [who] of current-vertice [who] of first path  [
-            if color != blue
-                  [set color brown set thickness 0.3]
-                  if color = blue
-                  [set color green set thickness 0.3]
+              if color != yellow and color != pink and color != cyan
+               [set color green set thickness 0.3]
+              if color = yellow or color = pink or color = cyan
+               [set color brown set thickness 0.3]
             ]
             wait delay
             display
@@ -268,6 +279,9 @@ to ucs
             ]
             if change-frontier? = false [
               set frontier lput self frontier
+              ask link [who] of current-vertice [who] of self  [
+                if color = blue
+                [set color green - 3 set thickness 0.3]]
               wait delay
               display
             ]
@@ -304,6 +318,9 @@ to bfs
             set cost ([cost] of current-vertice + distance current-vertice)
             set pre-vertice-pointer current-vertice
             set frontier lput self frontier
+            ask link [who] of current-vertice [who] of self  [
+              if color = blue
+              [set color pink - 3 set thickness 0.3]]
             wait delay
             display
           ]
@@ -318,10 +335,10 @@ to bfs
                 set path fput current-vertice path
                 set current-vertice [pre-vertice-pointer] of current-vertice
                 ask link [who] of current-vertice [who] of first path  [
-                if color != blue
-                  [set color brown set thickness 0.3]
-                  if color = blue
+                 if color != yellow and color != cyan and color != green
                   [set color pink set thickness 0.3]
+                  if color = yellow or color = cyan or color = green
+                  [set color brown set thickness 0.3]
                 ]
                 wait delay
                 display
@@ -365,6 +382,9 @@ to dfs
             set cost ([cost] of current-vertice + distance current-vertice)
             set pre-vertice-pointer current-vertice
             set frontier fput self frontier
+            ask link [who] of current-vertice [who] of self  [
+              if color = blue
+              [set color cyan - 3 set thickness 0.3]]
             wait delay
             display
           ]
@@ -379,10 +399,10 @@ to dfs
                 set path fput current-vertice path
                 set current-vertice [pre-vertice-pointer] of current-vertice
                 ask link [who] of current-vertice [who] of first path  [
-                  if color != blue
-                  [set color brown set thickness 0.3]
-                  if color = blue
+                if color != yellow and color != pink and color != green
                   [set color cyan set thickness 0.3]
+                  if color = yellow or color = pink or color = green
+                  [set color brown set thickness 0.3]
                 ]
                 wait delay
                 display
@@ -469,9 +489,9 @@ SLIDER
 delay
 delay
 0
-10
-0.0
-0.5
+5
+0.1
+0.1
 1
 NIL
 HORIZONTAL
@@ -528,7 +548,7 @@ CHOOSER
 algorithm-2
 algorithm-2
 "A*" "UCS" "BFS" "DFS"
-2
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
