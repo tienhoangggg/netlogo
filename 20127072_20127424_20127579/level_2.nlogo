@@ -1,15 +1,10 @@
 extensions [gis]
 
 breed [nodes n]
-breed [planes plane]
 globals [
   lines
   des
-]
-
-planes-own [
-  travel
-  travel-cost
+  src
 ]
 
 nodes-own [
@@ -22,9 +17,9 @@ nodes-own [
 to setup
   ca
   reset-ticks
-   if choose-map = "VN"
+  if choose-map = "VN"
   [set lines gis:load-dataset "Map/vn/VNM_roads.shp"]
-   if choose-map = "HaNoi"
+  if choose-map = "HaNoi"
   [set lines gis:load-dataset "Map/Hanoi/road_line.shp"]
   if choose-map = "DaNang"
   [set lines gis:load-dataset "Map/danang/map-5/roads-line.shp"]
@@ -37,7 +32,6 @@ to setup
     road-feature ->
     foreach gis:vertex-lists-of road-feature [
       v ->
-
       let pre-node-pointer nobody
       foreach v [
         node ->
@@ -77,42 +71,29 @@ to setup
     ]
   ]
   ask nodes with [ check? = false][die]
-  clear-color
+  default-color
   set des nobody
+  set src nobody
 end
 
-to clear-color
+to default-color
   ask links [set thickness 0.1 set color blue]
 end
 
-to clear-travel
-  ask planes[
-    set travel []
-  ]
-   clear-color
-end
-
-to createPlanes
-  ask nodes[set check? false]
-  if des != nobody[
-  ask des
-  [
+to Create
+  ask nodes[
+    set check? false
     set shape "star"
     set size 0.5
     set color red
-  ]]
-  ask planes[die]
-  clear-travel
-  create-planes 1 [
+  ]
+  default-color
+  set src one-of nodes
+  ask src[
     set color white
     set size 0.6
     set shape "car"
-    set travel []
-    let mynode one-of nodes
-    ask mynode[
-      set check? true
-    ]
-    move-to mynode
+    set check? true
   ]
   set des one-of nodes with [check? != true]
   ask des
@@ -124,312 +105,256 @@ to createPlanes
 end
 
 to go
-  if des != nobody[
-  if algorithm-1 = "A*" [a*]
-  if algorithm-1 = "UCS" [ucs]
-  if algorithm-1 = "BFS" [bfs]
-  if algorithm-1 = "DFS" [dfs]
-  ask links [
-    if color = yellow - 3 or color = green - 3 or color = pink - 3 or color = cyan - 3
-    [set thickness 0.1 set color blue]
-  ]
-  let temp des
-    ask des[
+  if src != nobody [
+    default-color
+    if algorithm-1 = "A*" [a* src]
+    if algorithm-1 = "GBFS" [gbfs src]
+    if algorithm-1 = "UCS" [ucs src]
+    if algorithm-1 = "BFS" [bfs src]
+    if algorithm-1 = "DFS" [dfs src]
+    ask links [
+    if color = yellow - 3 or color = green - 3 or color = pink - 3 or color = cyan - 3 or color = orange - 3
+      [set thickness 0.1 set color blue]
+    ]
+    let temp des
+    set des src
+    set src temp
+  ask src[
+      set color white
+      set size 0.6
+      set shape "car"
+    ]
+    ask des
+    [
+      set color yellow
+      set size 0.7
       set shape "star"
-    set size 0.5
-    set color red
-      set check? true
     ]
-    ask planes[
-    set des one-of nodes-here
-    ask des[
-    set color yellow
-    set size 0.7
-    set shape "star"
+    if algorithm-2 = "A*" [a* src]
+    if algorithm-2 = "GBFS" [gbfs src]
+    if algorithm-2 = "UCS" [ucs src]
+    if algorithm-2 = "BFS" [bfs src]
+    if algorithm-2 = "DFS" [dfs src]
+    ask links [
+      if color = yellow - 3 or color = green - 3 or color = pink - 3 or color = cyan - 3 or color = orange - 3
+      [set thickness 0.1 set color blue]
+    ]
+  ]
+end
+
+to a* [#root]
+  let queue []
+  ask nodes [
     set check? false
-    ]
+    set cost -1
+    set heuristic-value [distance des] of self
   ]
-  ask planes[die]
-  create-planes 1 [
-    set color white
-    set size 0.6
-    set shape "car"
-    set travel []
-    let mynode temp
-    move-to mynode
+  ask #root [
+    set check? true
+    set cost 0
   ]
-  if algorithm-2 = "A*" [a*]
-  if algorithm-2 = "UCS" [ucs]
-  if algorithm-2 = "BFS" [bfs]
-  if algorithm-2 = "DFS" [dfs]
-  ]
-  ask links [
-    if color = yellow - 3 or color = green - 3 or color = pink - 3 or color = cyan - 3
-    [set thickness 0.1 set color blue]
-  ]
-end
-
-to a*
-  if des != nobody[
-  ask planes [
-      set travel []
-      let queue []
-    let p self
-    let des-of-p [des] of p
-      let root one-of nodes-here
-      ask root [
-        set father-pointer nobody
-        set cost 0
-      ]
-      set queue lput root queue
-      ask nodes [
-        set heuristic-value [distance des-of-p] of self
-        set check? false
-      ]
-      while [not empty? queue] [
-        set queue sort-by [[v1 v2] -> ([heuristic-value] of v2 + [cost] of v2) > ([heuristic-value] of v1 + [cost] of v1)]  queue
-        let cur-node first queue
-        ask cur-node [set check? true]
-        set queue but-first queue
-        if cur-node = des [
-          set travel-cost 0
-          while [cur-node != root] [
-            set travel-cost travel-cost + [cost] of cur-node
-            set travel fput cur-node travel
-            set cur-node [father-pointer] of cur-node
-            ask link [who] of cur-node [who] of first travel  [
-            if color != cyan and color != pink and color != green
+  set queue lput #root queue
+  while [not empty? queue] [
+    set queue sort-by [[v1 v2] -> ([heuristic-value] of v2 + [cost] of v2) > ([heuristic-value] of v1 + [cost] of v1)]  queue
+    let cur-node first queue
+    set queue but-first queue
+    if cur-node = des [
+      while [cur-node != #root] [
+        ask link [who] of cur-node [who] of [father-pointer] of cur-node [
+          if color != cyan and color != pink and color != green and color != orange
                 [set color yellow set thickness 0.3]
-              if color = cyan or color = pink or color = green
-                [set color brown set thickness 0.3]
-            ]
-            wait delay
-            display
-          ]
-          set travel fput root travel
-          stop
+          if color = cyan or color = pink or color = green or color = orange
+                [set color white set thickness 0.3]
         ]
-        ask [link-neighbors] of cur-node[
-          if not check? [
-            let change-queue? false
-            set cost ([cost] of cur-node + distance cur-node)
-            set father-pointer cur-node
-            foreach queue [
-              v ->
-              if v = self [
-                set change-queue? true
-                if ([cost] of v + [heuristic-value] of v) > ([cost] of self + heuristic-value) [
-                  ask v [set cost [cost] of myself]
-                ]
-              ]
-            ]
-            if change-queue? = false [
-              set queue lput self queue
-               ask link [who] of cur-node [who] of self  [
-              if color = blue
-                [set color yellow - 3 set thickness 0.3]
-              ]
-              wait delay
-              display
-           ]
-         ]
-       ]
-     ]
-  ]
-]
-end
-
-to ucs
- if des != nobody [
-    ask planes [
-      let queue []
-      ask nodes [ set check? false ]
-      let root one-of nodes-here
-      ask root [
-        set father-pointer nobody
-        set cost 0
+        set cur-node [father-pointer] of cur-node
+        wait delay
+        display
       ]
-      set queue lput root queue
-      set travel []
-      let p self
-      while [not empty? queue] [
-        set queue sort-by [[v1 v2] -> [cost] of v2 > [cost] of v1]  queue
-        let cur-node first queue
-        ask cur-node [set check? true]
-        set queue but-first queue
-        if cur-node = des [
-          set travel-cost 0
-          while [cur-node != root] [
-            set travel-cost travel-cost + [cost] of cur-node
-            set travel fput cur-node travel
-            set cur-node [father-pointer] of cur-node
-            ask link [who] of cur-node [who] of first travel  [
-             if color != yellow and color != pink and color != cyan
-               [set color green set thickness 0.3]
-              if color = yellow or color = pink or color = cyan
-               [set color brown set thickness 0.3]
-            ]
-            wait delay
-            display
-          ]
-          set travel fput root travel
-          stop
+      stop
+    ]
+    ask [link-neighbors] of cur-node[
+      if check? = false and ((cost > ([cost] of cur-node + [distance cur-node] of self)) or cost = -1) [
+        set cost ([cost] of cur-node + [distance cur-node] of self)
+        set father-pointer cur-node
+        set check? true
+        ask link [who] of self [who] of [father-pointer] of self [
+          if color = blue
+          [set color yellow - 3 set thickness 0.3]
         ]
-        ask [link-neighbors] of cur-node[
-          if not check? [
-            let change-queue? false
-            set cost ([cost] of cur-node + distance cur-node)
-            set father-pointer cur-node
-            foreach queue [
-              v ->
-              if v = self [
-                if [cost] of v > [cost] of self [
-                  ask v [set cost [cost] of myself]
-                ]
-                set change-queue? true
-              ]
-            ]
-            if change-queue? = false [
-              set queue lput self queue
-              ask link [who] of cur-node [who] of self  [
-               if color = blue
-                [set color green - 3 set thickness 0.3]
-              ]
-              wait delay
-              display
-            ]
-          ]
-        ]
+        set queue lput self queue
+        wait delay
+        display
       ]
     ]
   ]
 end
 
-to bfs
-  if des != nobody [
-    ask planes [
-     set travel []
-      ask nodes [
-        set check? false
+to gbfs [#root]
+  ask nodes [
+    set check? false
+    set heuristic-value [distance des] of self
+  ]
+  let queue []
+  ask #root[set check? true]
+  set queue lput #root queue
+  while [not empty? queue] [
+    set queue sort-by [[v1 v2] -> [heuristic-value] of v2 > [heuristic-value] of v1]  queue
+    let cur-node first queue
+    set queue but-first queue
+    if cur-node = des [
+      while [cur-node != #root] [
+        ask link [who] of cur-node [who] of [father-pointer] of cur-node  [
+          if color != cyan and color != pink and color != green and color != yellow
+                [set color orange set thickness 0.3]
+          if color = cyan or color = pink or color = green or color = yellow
+                [set color white set thickness 0.3]
+        ]
+        set cur-node [father-pointer] of cur-node
+        wait delay
+        display
       ]
-      let root one-of nodes-here
-      ask root [
-        set father-pointer nobody
-        set cost 0
+      stop
+    ]
+    ask [link-neighbors] of cur-node[
+      if check? = false[
+        set father-pointer cur-node
+        set check? true
+        set queue lput self queue
+        ask link [who] of cur-node [who] of self  [
+          if color = blue
+          [set color orange - 3 set thickness 0.3]
+        ]
+        wait delay
+        display
       ]
-      let queue []
-      let p self
-      let goal? false
-      let des-of-p [des] of p
-      set queue lput root queue
-      while [not empty? queue and goal? != true] [
-         let cur-node first queue
-        ask cur-node [set check? true]
-        set queue but-first queue
-        ask [link-neighbors] of cur-node[
-          if not check? and not member? self queue and goal? != true[
-            set father-pointer cur-node
-            set queue lput self queue
-            set cost ([cost] of cur-node + distance cur-node)
-            ask link [who] of cur-node [who] of self  [
-              if color = blue
-              [set color pink - 3 set thickness 0.3]
-            ]
-            wait delay
-            display
-          ]
-          if self = des-of-p [
-            ask p[
-              set travel-cost 0
-            ]
-            set cur-node self
-            while [cur-node != root] [
-              ask p[
-                set travel-cost travel-cost + [cost] of cur-node
-                set travel fput cur-node travel
-                set cur-node [father-pointer] of cur-node
-                ask link [who] of cur-node [who] of first travel  [
-                 if color != yellow and color != cyan and color != green
+    ]
+  ]
+end
+
+to ucs [#root]
+  let queue []
+  ask nodes [
+    set check? false
+    set cost -1
+  ]
+  ask #root [
+    set check? true
+    set cost 0
+  ]
+  set queue lput #root queue
+  while [not empty? queue] [
+    set queue sort-by [[v1 v2] -> [cost] of v2 > [cost] of v1]  queue
+    let cur-node first queue
+    ask cur-node [ set check? false ]
+    set queue but-first queue
+    if cur-node = des [
+      while [cur-node != #root] [
+        ask link [who] of cur-node [who] of [father-pointer] of cur-node [
+          if color != cyan and color != pink and color != orange and color != yellow
+                  [set color green set thickness 0.3]
+          if color = cyan or color = pink or color = orange or color = yellow
+            [set color white set thickness 0.3]
+        ]
+        set cur-node [father-pointer] of cur-node
+        wait delay
+        display
+      ]
+      stop
+    ]
+    ask [link-neighbors] of cur-node[
+      if check? = false and ((cost > ([cost] of cur-node + [distance cur-node] of self)) or cost = -1) [
+        set cost ([cost] of cur-node + [distance cur-node] of self)
+        set father-pointer cur-node
+        set check? true
+        ask link [who] of self [who] of [father-pointer] of self [
+          if color = blue
+          [set color green - 3 set thickness 0.3]
+        ]
+        set queue lput self queue
+        wait delay
+        display
+      ]
+    ]
+  ]
+end
+
+to bfs [#root]
+  ask nodes [ set check? false ]
+  let queue []
+  let finish? false
+  ask #root[set check? true]
+  set queue lput #root queue
+  while [not empty? queue and finish? = false] [
+    let cur-node first queue
+    set queue but-first queue
+    ask [link-neighbors] of cur-node[
+      if check? = false[
+        set father-pointer cur-node
+        set check? true
+        set queue lput self queue
+        ask link [who] of cur-node [who] of self  [
+          if color = blue
+          [set color pink - 3 set thickness 0.3]
+        ]
+        wait delay
+        display
+      ]
+      if self = des [
+        let recursive-node self
+        while [recursive-node != #root] [
+          ask link [who] of recursive-node [who] of [father-pointer] of recursive-node  [
+            if color != cyan and color != orange and color != green and color != yellow
                   [set color pink set thickness 0.3]
-                  if color = yellow or color = cyan or color = green
-                  [set color brown set thickness 0.3]
-                ]
-                wait delay
-                display
-              ]
-            ]
-            ask p[
-              set travel fput root travel
-            ]
-            set goal? true
-            stop
+            if color = cyan or color = orange or color = green or color = yellow
+              [set color white set thickness 0.3]
           ]
+          set recursive-node [father-pointer] of recursive-node
+          wait delay
+          display
         ]
+        set finish? true
+        stop
       ]
     ]
   ]
 end
 
-to dfs
-   if des != nobody [
-    ask planes [
-      set travel []
-      ask nodes [
-        set check? false
-      ]
-      let root one-of nodes-here
-      ask root [
-        set father-pointer nobody
-        set cost 0
-      ]
-      let queue []
-      let p self
-      let goal? false
-      let des-of-p [des] of p
-      set queue lput root queue
-      while [not empty? queue and goal? != true] [
-        let cur-node first queue
-        ask cur-node [set check? true]
-        set queue but-first queue
-        ask [link-neighbors] of cur-node[
-          if not check? and goal? != true [
-            set father-pointer cur-node
-            set queue fput self queue
-            set cost ([cost] of cur-node + distance cur-node)
-            ask link [who] of cur-node [who] of self  [
-             if color = blue
-              [set color cyan - 3 set thickness 0.3]
-            ]
-            wait delay
-            display
-          ]
-          if self = des-of-p [
-            ask p[
-              set travel-cost 0
-            ]
-            set cur-node self
-            while [cur-node != root] [
-              ask p[
-                set travel-cost travel-cost + [cost] of cur-node
-                set travel fput cur-node travel
-                set cur-node [father-pointer] of cur-node
-                ask link [who] of cur-node [who] of first travel  [
-                 if color != yellow and color != pink and color != green
-                  [set color cyan set thickness 0.3]
-                  if color = yellow or color = pink or color = green
-                  [set color brown set thickness 0.3]
-                ]
-                wait delay
-                display
-              ]
-            ]
-            ask p[
-              set travel fput root travel
-            ]
-            set goal? true
-            stop
-          ]
+to dfs [#root]
+  ask nodes [ set check? false ]
+  let queue []
+  let finish? false
+  ask #root[set check? true]
+  set queue fput #root queue
+  while [not empty? queue and finish? = false] [
+    let cur-node first queue
+    set queue but-first queue
+    ask [link-neighbors] of cur-node[
+      if check? = false[
+        set father-pointer cur-node
+        set check? true
+        set queue fput self queue
+        ask link [who] of cur-node [who] of self  [
+          if color = blue
+          [set color cyan - 3 set thickness 0.3]
         ]
+        wait delay
+        display
+      ]
+      if self = des [
+        let recursive-node self
+        while [recursive-node != #root] [
+          ask link [who] of recursive-node [who] of [father-pointer] of recursive-node  [
+            if color != orange and color != pink and color != green and color != yellow
+                  [set color cyan set thickness 0.3]
+            if color = orange or color = pink or color = green or color = yellow
+              [set color white set thickness 0.3]
+          ]
+          set recursive-node [father-pointer] of recursive-node
+          wait delay
+          display
+        ]
+        set finish? true
+        stop
       ]
     ]
   ]
@@ -463,10 +388,10 @@ ticks
 30.0
 
 BUTTON
-54
-76
-135
-109
+50
+64
+131
+97
 NIL
 setup
 NIL
@@ -480,12 +405,12 @@ NIL
 1
 
 BUTTON
-24
-123
-171
-156
+20
+111
+167
+144
 NIL
-createPlanes
+Create
 NIL
 1
 T
@@ -497,52 +422,35 @@ NIL
 1
 
 SLIDER
-17
-170
-189
-203
+13
+158
+185
+191
 delay
 delay
 0
 5
-0.0
+0.1
 0.1
 1
 NIL
 HORIZONTAL
 
-BUTTON
-48
-366
-136
-399
-clean
-clear-travel
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
 CHOOSER
-31
-215
-169
-260
+27
+203
+165
+248
 algorithm-1
 algorithm-1
-"A*" "UCS" "BFS" "DFS"
-1
+"A*" "GBFS" "UCS" "BFS" "DFS"
+0
 
 BUTTON
-59
-322
-122
-355
+64
+309
+127
+342
 NIL
 go
 NIL
@@ -556,24 +464,41 @@ NIL
 1
 
 CHOOSER
-31
-265
-169
-310
-algorithm-2
-algorithm-2
-"A*" "UCS" "BFS" "DFS"
-3
-
-CHOOSER
-27
-18
-165
-63
+26
+10
+164
+55
 choose-map
 choose-map
 "VN" "DaNang" "England" "Korean" "HaNoi"
 0
+
+BUTTON
+54
+358
+142
+391
+clean
+default-color
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+CHOOSER
+28
+257
+166
+302
+algorithm-2
+algorithm-2
+"A*" "GBFS" "UCS" "BFS" "DFS"
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
