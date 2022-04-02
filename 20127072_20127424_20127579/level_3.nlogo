@@ -34,6 +34,7 @@ to setup
   [set lines gis:load-dataset "Map/england/england/roads-line.shp"]
   if choose-map = "Korean"
   [set lines gis:load-dataset "Map/korean/korean/roads-line.shp"]
+  gis:set-world-envelope gis:envelope-of lines
   foreach gis:feature-list-of lines [
     road-feature ->
     foreach gis:vertex-lists-of road-feature [
