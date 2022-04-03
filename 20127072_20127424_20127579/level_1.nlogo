@@ -12,6 +12,7 @@ nodes-own [
   heuristic-value
   cost
   father-pointer
+  cost-to-des
 ]
 
 to setup
@@ -142,6 +143,7 @@ to a* [#root]
         wait delay
         display
       ]
+      ask #root [set cost-to-des [cost]of des]
       stop
     ]
     ask [link-neighbors] of cur-node[
@@ -164,7 +166,7 @@ to gbfs [#root]
     set heuristic-value [distance des] of self
   ]
   let queue []
-  ask #root[set check? true]
+  ask #root[set check? true set cost 0]
   set queue lput #root queue
   while [not empty? queue] [
     set queue sort-by [[v1 v2] -> [heuristic-value] of v2 > [heuristic-value] of v1]  queue
@@ -177,12 +179,14 @@ to gbfs [#root]
         wait delay
         display
       ]
+      ask #root [set cost-to-des [cost]of des]
       stop
     ]
     ask [link-neighbors] of cur-node[
       if check? = false[
         set father-pointer cur-node
         set check? true
+        set cost ([cost] of cur-node + [distance cur-node] of self)
         set queue lput self queue
         ask link [who] of cur-node [who] of self  [set color orange - 3 set thickness 0.3]
         wait delay
@@ -215,6 +219,7 @@ to ucs [#root]
         wait delay
         display
       ]
+      ask #root [set cost-to-des ([cost] of des)]
       stop
     ]
     ask [link-neighbors] of cur-node[
@@ -235,7 +240,7 @@ to bfs [#root]
   ask nodes [ set check? false ]
   let queue []
   let finish? false
-  ask #root[set check? true]
+  ask #root[set check? true set cost 0]
   set queue lput #root queue
   while [not empty? queue and finish? = false] [
     let cur-node first queue
@@ -244,6 +249,7 @@ to bfs [#root]
       if check? = false[
         set father-pointer cur-node
         set check? true
+        set cost ([cost] of cur-node + [distance cur-node] of self)
         set queue lput self queue
         ask link [who] of cur-node [who] of self  [set color pink - 3 set thickness 0.3]
         wait delay
@@ -258,6 +264,7 @@ to bfs [#root]
           display
         ]
         set finish? true
+        ask #root [set cost-to-des ([cost] of des)]
         stop
       ]
     ]
@@ -268,7 +275,7 @@ to dfs [#root]
   ask nodes [ set check? false ]
   let queue []
   let finish? false
-  ask #root[set check? true]
+  ask #root[set check? true set cost 0]
   set queue fput #root queue
   while [not empty? queue and finish? = false] [
     let cur-node first queue
@@ -277,6 +284,7 @@ to dfs [#root]
       if check? = false[
         set father-pointer cur-node
         set check? true
+        set cost ([cost] of cur-node + [distance cur-node] of self)
         set queue fput self queue
         ask link [who] of cur-node [who] of self  [set color cyan - 3 set thickness 0.3]
         wait delay
@@ -291,6 +299,7 @@ to dfs [#root]
           display
         ]
         set finish? true
+        ask #root [set cost-to-des ([cost] of des)]
         stop
       ]
     ]
@@ -367,7 +376,7 @@ delay
 delay
 0
 5
-0.0
+0.1
 0.1
 1
 NIL
@@ -381,7 +390,7 @@ CHOOSER
 algorithm
 algorithm
 "A*" "GBFS" "UCS" "BFS" "DFS"
-2
+3
 
 BUTTON
 61
